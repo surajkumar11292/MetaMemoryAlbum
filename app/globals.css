@@ -1,0 +1,130 @@
+@import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Dark Mode as the Primary Archival Identity */
+    --background: #010101;
+    --foreground: #F9F9F9;
+    --surface: #121414;
+    --surface-raised: #151310;
+    --surface-overlay: #22201D;
+    --surface-container: #1E2020;
+    --surface-container-high: #282A2B;
+    --border: #33312E;
+    --border-muted: #282623;
+    --border-subtle: #1C1A18;
+    --border-active: #FFC107;
+    --muted: #1E2020;
+    --muted-foreground: #A19D97;
+    --accent: #FFC107;
+    --accent-foreground: #010101;
+    --accent-hover: #FFD54F;
+    --danger: #FFB4AB;
+    --success: #7FFC97;
+  }
+
+  .light {
+    --background: #FDFBF7;
+    --foreground: #1A1C1C;
+    --surface: #F5EFE6;
+    --surface-raised: #FFFFFF;
+    --surface-overlay: #FFFFFF;
+    --surface-container: #EBE5DB;
+    --surface-container-high: #E2DBD0;
+    --border: #DDD6CB;
+    --border-muted: #E8E2D8;
+    --border-subtle: #F0EBE3;
+    --border-active: #B45309;
+    --muted: #EBE5DB;
+    --muted-foreground: #6B665F;
+    --accent: #B45309;
+    --accent-foreground: #FFFFFF;
+    --accent-hover: #92400E;
+    --danger: #BA1A1A;
+    --success: #006C2D;
+  }
+
+  * {
+    border-color: var(--border);
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::selection {
+    background-color: var(--accent);
+    color: var(--accent-foreground);
+  }
+}
+
+/* Archival 1px Precision Border Utilities */
+.archive-border {
+  border: 1px solid var(--border);
+}
+
+.archive-border-active {
+  border: 1px solid var(--border-active);
+}
+
+.archive-card {
+  background-color: var(--surface-raised);
+  border: 1px solid var(--border);
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.archive-card:hover {
+  border-color: var(--border-active);
+}
+
+/* Restrained Tag Chip */
+.tag-chip {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  background-color: rgba(255, 193, 7, 0.04);
+  color: var(--foreground);
+}
+
+/* Custom Minimalist Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 0px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-foreground);
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
