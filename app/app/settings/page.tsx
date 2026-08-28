@@ -72,8 +72,8 @@ export default function SettingsPage() {
               <div className="w-14 h-14 border border-amber-accent overflow-hidden bg-surface shrink-0">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={user?.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80'}
-                  alt={user?.name || 'Archivist'}
+                  src={user?.avatar_url || '/avatar.jpg'}
+                  alt={user?.name || 'Suraj Kumar'}
                   className="w-full h-full object-cover"
                 />
               </div>

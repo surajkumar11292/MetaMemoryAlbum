@@ -4,7 +4,7 @@ export const SEED_USER: User = {
   id: 'user_archivist_01',
   email: 'archivist@metamemory.app',
   name: 'Suraj Kumar',
-  avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
+  avatar_url: '/avatar.jpg',
   created_at: '2023-01-15T10:00:00.000Z',
   storage_used_bytes: 48291040,
 };
