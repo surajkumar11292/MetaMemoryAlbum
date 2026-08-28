@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabase, getServiceSupabase } from '@/lib/supabase';
 import { db } from '@/lib/db';
 import { signJWT } from '@/lib/jwt';
 
@@ -30,50 +30,78 @@ export async function POST(req: Request) {
     let userId: string | null = null;
     let requiresEmailConfirmation = false;
 
-    // 1. Attempt registration with Supabase Auth
+    // 1. Primary: Use Supabase Admin API to create pre-confirmed user credentials
     try {
-      const { data, error } = await supabase.auth.signUp({
+      const adminClient = getServiceSupabase();
+      const { data: adminUser, error: adminError } = await adminClient.auth.admin.createUser({
         email: trimmedEmail,
-        password,
-        options: {
-          data: {
-            name: trimmedName,
-            avatar_url: avatar_url || undefined,
-          },
+        password: password,
+        email_confirm: true,
+        user_metadata: {
+          name: trimmedName,
+          avatar_url: avatar_url || undefined,
         },
       });
 
-      if (error) {
-        const msg = error.message.toLowerCase();
-        if (msg.includes('already registered') || msg.includes('user already exists')) {
+      if (adminError) {
+        const msg = adminError.message.toLowerCase();
+        if (msg.includes('already registered') || msg.includes('user already exists') || msg.includes('email address has already been taken')) {
           return NextResponse.json(
             { error: 'This email is already registered. Please sign in with your password.', isAlreadyRegistered: true },
             { status: 409 }
           );
         }
-        // If Supabase has an internal database error with custom triggers, fallback gracefully
-        console.warn('Supabase signup notice:', error.message);
-      } else if (data?.user) {
-        // If identities is empty array, user exists in Supabase (unconfirmed duplicate)
-        if (data.user.identities && data.user.identities.length === 0) {
-          return NextResponse.json(
-            { error: 'This email is already registered. Please sign in with your password.', isAlreadyRegistered: true },
-            { status: 409 }
-          );
-        }
-        userId = data.user.id;
-        requiresEmailConfirmation = !data.session && !!data.user.identities?.length;
+        console.warn('Supabase admin create user notice:', adminError.message);
+      } else if (adminUser?.user) {
+        userId = adminUser.user.id;
       }
-    } catch (sbErr: any) {
-      console.warn('Supabase auth catch:', sbErr?.message);
+    } catch (adminEx: any) {
+      console.warn('Supabase admin API exception:', adminEx?.message);
     }
 
-    // 2. Generate resilient unique ID if not provided by Supabase
+    // 2. Secondary: Fallback to standard Supabase signUp if admin method was skipped or errored
+    if (!userId) {
+      try {
+        const { data, error } = await supabase.auth.signUp({
+          email: trimmedEmail,
+          password,
+          options: {
+            data: {
+              name: trimmedName,
+              avatar_url: avatar_url || undefined,
+            },
+          },
+        });
+
+        if (error) {
+          const msg = error.message.toLowerCase();
+          if (msg.includes('already registered') || msg.includes('user already exists')) {
+            return NextResponse.json(
+              { error: 'This email is already registered. Please sign in with your password.', isAlreadyRegistered: true },
+              { status: 409 }
+            );
+          }
+        } else if (data?.user) {
+          if (data.user.identities && data.user.identities.length === 0) {
+            return NextResponse.json(
+              { error: 'This email is already registered. Please sign in with your password.', isAlreadyRegistered: true },
+              { status: 409 }
+            );
+          }
+          userId = data.user.id;
+          requiresEmailConfirmation = !data.session && !!data.user.identities?.length;
+        }
+      } catch (sbErr: any) {
+        console.warn('Supabase fallback signUp exception:', sbErr?.message);
+      }
+    }
+
+    // 3. Fallback: Generate resilient unique ID if Supabase was completely unreachable
     if (!userId) {
       userId = `usr_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
     }
 
-    // 3. Create or fetch user in local / global MemoryDatabase
+    // 4. Create or fetch user in local MemoryDatabase
     let newUser;
     try {
       newUser = await db.getUser(userId);
@@ -87,7 +115,6 @@ export async function POST(req: Request) {
         });
       }
     } catch (dbError: any) {
-      console.warn('Local DB user creation fallback:', dbError?.message);
       newUser = {
         id: userId,
         email: trimmedEmail,
@@ -99,10 +126,10 @@ export async function POST(req: Request) {
       };
     }
 
-    // Save credentials in database
+    // Save credentials in local store
     await db.saveCredentials(trimmedEmail, password, newUser.id);
 
-    // 4. Generate signed JWT token
+    // 5. Generate signed JWT token
     const token = await signJWT({
       sub: newUser.id,
       email: newUser.email,
@@ -123,7 +150,7 @@ export async function POST(req: Request) {
       requiresEmailConfirmation,
     });
 
-    // 5. Set HTTP-Only JWT cookie
+    // 6. Set HTTP-Only JWT cookie
     response.cookies.set('meta_jwt', token, {
       path: '/',
       httpOnly: true,
@@ -132,7 +159,7 @@ export async function POST(req: Request) {
       maxAge: 60 * 60 * 24 * 7,
     });
 
-    // 6. Set legacy session cookie fallback
+    // 7. Set session cookie fallback
     const sessionData = JSON.stringify({
       id: newUser.id,
       email: newUser.email,
