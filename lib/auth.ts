@@ -2,11 +2,32 @@ import { cookies } from 'next/headers';
 import { db } from '@/lib/db';
 import { User } from '@/lib/types';
 import { SEED_USER } from '@/lib/db/seed';
+import { verifyJWT } from '@/lib/jwt';
 
 export async function getSessionUser(): Promise<User | null> {
   const cookieStore = cookies();
-  const sessionData = cookieStore.get('meta_session_user')?.value;
 
+  // 1. Check for signed JWT cookie
+  const jwtToken = cookieStore.get('meta_jwt')?.value;
+  if (jwtToken) {
+    const payload = await verifyJWT(jwtToken);
+    if (payload && payload.sub) {
+      const user = await db.getUser(payload.sub);
+      if (user) return user;
+
+      // If user not in memory yet (e.g. fresh worker), instantiate profile record
+      return await db.createUser({
+        id: payload.sub,
+        email: payload.email || 'archivist@metamemory.app',
+        name: payload.name || (payload.email ? payload.email.split('@')[0] : 'Archivist'),
+        avatar_url: payload.avatar_url || undefined,
+        storage_used_bytes: 0,
+      });
+    }
+  }
+
+  // 2. Check for session cookie
+  const sessionData = cookieStore.get('meta_session_user')?.value;
   if (!sessionData) {
     return null;
   }
@@ -17,7 +38,7 @@ export async function getSessionUser(): Promise<User | null> {
       const parsed = JSON.parse(sessionData);
       const user = await db.getUser(parsed.id);
       if (user) return user;
-      
+
       // If not yet in DB, create profile record
       return await db.createUser({
         id: parsed.id,

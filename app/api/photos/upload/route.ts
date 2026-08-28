@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getSessionUser } from '@/lib/auth';
-import { SEED_USER } from '@/lib/db/seed';
 import { extractPhotoMetadata } from '@/lib/exif';
 import { Photo } from '@/lib/types';
 import path from 'path';
@@ -22,7 +21,9 @@ const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25 MB
 export async function POST(req: Request) {
   try {
     const user = await getSessionUser();
-    const userId = user ? user.id : SEED_USER.id;
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     const formData = await req.formData();
     const files = formData.getAll('files') as File[];
@@ -55,7 +56,7 @@ export async function POST(req: Request) {
 
       const newPhoto: Photo = {
         id: photoId,
-        user_id: userId,
+        user_id: user.id,
         storage_key: storageKey,
         url: base64Data,
         thumbnail_url: base64Data,

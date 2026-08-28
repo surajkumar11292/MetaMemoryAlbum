@@ -17,7 +17,10 @@ export function MobileNav() {
   ];
 
   return (
-    <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-background/95 backdrop-blur-md border-t border-border px-2 py-2 flex justify-around items-center">
+    <nav
+      className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-background/95 backdrop-blur-md border-t border-border px-2 pt-1.5 flex justify-around items-center"
+      style={{ paddingBottom: 'max(8px, env(safe-area-inset-bottom))' }}
+    >
       {items.map((item) => {
         const Icon = item.icon;
         const isActive = pathname === item.href || (item.href !== '/app' && pathname.startsWith(item.href));
@@ -26,7 +29,7 @@ export function MobileNav() {
           <Link
             key={item.href}
             href={item.href}
-            className={`flex flex-col items-center py-1 px-3 transition-colors ${
+            className={`flex flex-col items-center justify-center py-1.5 px-3 min-w-[56px] min-h-[44px] transition-colors ${
               isActive ? 'text-amber-accent' : 'text-muted-foreground hover:text-foreground'
             }`}
           >

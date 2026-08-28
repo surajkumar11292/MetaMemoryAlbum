@@ -2,22 +2,21 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   Search,
   Plus,
   Heart,
   History,
   Grid,
-  User,
   Sliders,
-  Layers
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { UploadModal } from '@/components/upload/UploadModal';
 
 export function AppHeader() {
   const pathname = usePathname();
+  const router = useRouter();
   const [isUploadOpen, setIsUploadOpen] = useState(false);
 
   const navLinks = [
@@ -34,7 +33,7 @@ export function AppHeader() {
           {/* Brand Logo Identity */}
           <div className="flex items-center space-x-8">
             <Link href="/app" className="flex items-center space-x-2.5 group">
-              <div className="w-7 h-7 bg-amber-accent flex items-center justify-center text-deep-charcoal font-serif font-bold text-sm tracking-tighter">
+              <div className="w-7 h-7 bg-amber-accent flex items-center justify-center text-deep-charcoal font-serif font-bold text-sm tracking-tighter transition-transform group-hover:scale-105">
                 M
               </div>
               <span className="font-display text-xl font-medium text-foreground tracking-tight group-hover:text-amber-accent transition-colors">
@@ -65,10 +64,10 @@ export function AppHeader() {
 
           {/* Right Action Toolbar */}
           <div className="flex items-center space-x-3">
-            {/* Quick Ingestion Button */}
+            {/* Quick Ingestion Button (Sharp 0px, no drop shadow per design system) */}
             <button
               onClick={() => setIsUploadOpen(true)}
-              className="inline-flex items-center space-x-1.5 bg-amber-accent text-deep-charcoal font-mono text-xs uppercase tracking-widest px-3.5 py-2 hover:bg-accent-hover font-semibold transition-colors shadow-sm"
+              className="inline-flex items-center space-x-1.5 bg-amber-accent text-deep-charcoal font-mono text-xs uppercase tracking-widest px-3.5 py-2 hover:bg-accent-hover font-semibold transition-colors"
               title="Add Memories"
             >
               <Plus className="w-3.5 h-3.5" />
@@ -99,9 +98,7 @@ export function AppHeader() {
         isOpen={isUploadOpen}
         onClose={() => setIsUploadOpen(false)}
         onUploadSuccess={() => {
-          if (typeof window !== 'undefined') {
-            window.location.reload();
-          }
+          router.refresh();
         }}
       />
     </>

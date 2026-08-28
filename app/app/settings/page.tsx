@@ -73,8 +73,9 @@ export default function SettingsPage() {
   };
 
   const handleResetData = () => {
-    if (confirm('Reset your memory archive to the original state?')) {
-      window.location.reload();
+    if (confirm('Refresh your memory archive view?')) {
+      router.refresh();
+      toast({ title: 'Archive view refreshed', type: 'info' });
     }
   };
 
@@ -95,7 +96,7 @@ export default function SettingsPage() {
 
   return (
     <AppShell>
-      <div className="max-w-3xl space-y-10">
+      <div className="max-w-3xl mx-auto space-y-10">
         <div className="border-b border-border pb-6">
           <span className="font-mono text-xs text-amber-accent uppercase tracking-widest block mb-1.5">
             System Preferences

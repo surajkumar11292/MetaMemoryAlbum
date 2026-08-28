@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getSessionUser } from '@/lib/auth';
-import { SEED_USER } from '@/lib/db/seed';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,9 +10,11 @@ export async function GET(
 ) {
   try {
     const user = await getSessionUser();
-    const userId = user ? user.id : SEED_USER.id;
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-    const photo = await db.getPhotoById(userId, params.id);
+    const photo = await db.getPhotoById(user.id, params.id);
     if (!photo) {
       return NextResponse.json({ error: 'Photo not found' }, { status: 404 });
     }
@@ -29,7 +30,9 @@ export async function PATCH(
 ) {
   try {
     const user = await getSessionUser();
-    const userId = user ? user.id : SEED_USER.id;
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     const body = await req.json();
     const updates: any = {};
@@ -44,7 +47,7 @@ export async function PATCH(
       updates.is_cover = body.is_cover;
     }
 
-    const updated = await db.updatePhoto(userId, params.id, updates);
+    const updated = await db.updatePhoto(user.id, params.id, updates);
     if (!updated) {
       return NextResponse.json({ error: 'Photo not found or unauthorized' }, { status: 404 });
     }
@@ -61,9 +64,11 @@ export async function DELETE(
 ) {
   try {
     const user = await getSessionUser();
-    const userId = user ? user.id : SEED_USER.id;
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-    const success = await db.deletePhoto(userId, params.id);
+    const success = await db.deletePhoto(user.id, params.id);
     if (!success) {
       return NextResponse.json({ error: 'Photo not found or unauthorized' }, { status: 404 });
     }

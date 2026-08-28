@@ -1,14 +1,15 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getSessionUser } from '@/lib/auth';
-import { SEED_USER } from '@/lib/db/seed';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
   try {
     const user = await getSessionUser();
-    const userId = user ? user.id : SEED_USER.id;
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     const { searchParams } = new URL(req.url);
     const monthParam = searchParams.get('month');
@@ -18,7 +19,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'Invalid month number (1-12)' }, { status: 400 });
     }
 
-    const flashback = await db.getFlashback(userId, month);
+    const flashback = await db.getFlashback(user.id, month);
 
     return NextResponse.json({ flashback, user });
   } catch (error) {
