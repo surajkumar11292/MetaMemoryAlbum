@@ -328,8 +328,6 @@ class MemoryDatabase {
 
 // Global Singleton Database Instance
 const globalDb = (global as any).__meta_memory_db || new MemoryDatabase();
-if (process.env.NODE_ENV !== 'production') {
-  (global as any).__meta_memory_db = globalDb;
-}
+(global as any).__meta_memory_db = globalDb;
 
 export const db = globalDb as MemoryDatabase;

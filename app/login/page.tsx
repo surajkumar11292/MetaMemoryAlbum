@@ -30,9 +30,9 @@ export default function LoginPage() {
       // ignore
     }
 
-    // Listen for OAuth redirects
+    // Listen for OAuth redirects (only on explicit SIGNED_IN event)
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session?.user) {
+      if (event === 'SIGNED_IN' && session?.user) {
         localStorage.setItem('meta_last_auth_method', 'google');
         const googleName = session.user.user_metadata?.full_name || session.user.user_metadata?.name || session.user.email?.split('@')[0];
         const googleAvatar = session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture;
@@ -51,21 +51,20 @@ export default function LoginPage() {
     try {
       localStorage.setItem('meta_last_auth_method', 'google');
       
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/app` : undefined,
+          redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined,
         },
       });
 
       if (error) {
-        console.warn('Supabase OAuth notice:', error.message);
-        // Fallback to local session
-        await establishLocalSession(`user_${Date.now()}`, 'google.user@metamemory.app', 'Google Archivist');
+        setErrorMessage(error.message);
+        setIsLoading(false);
       }
     } catch (err: any) {
-      console.warn('Fallback to local session:', err);
-      await establishLocalSession(`user_${Date.now()}`, 'google.user@metamemory.app', 'Google Archivist');
+      setErrorMessage(err.message || 'Failed to initialize Google authentication');
+      setIsLoading(false);
     }
   };
 
@@ -101,14 +100,13 @@ export default function LoginPage() {
             setIsLoading(false);
             return;
           } else {
-            // Local fallback login
-            const generatedId = `user_${btoa(email).replace(/[^a-zA-Z0-9]/g, '').substring(0, 12)}`;
-            await establishLocalSession(generatedId, email, email.split('@')[0]);
+            setErrorMessage(error.message);
+            setIsLoading(false);
             return;
           }
         }
 
-        const userId = data.user?.id || `user_${btoa(email).replace(/[^a-zA-Z0-9]/g, '').substring(0, 12)}`;
+        const userId = data.user?.id || `user_${Date.now()}`;
         const userName = data.user?.user_metadata?.name || email.split('@')[0];
         await establishLocalSession(userId, email, userName);
       } else {
@@ -129,6 +127,10 @@ export default function LoginPage() {
             setAuthMode('signin');
             setIsLoading(false);
             return;
+          } else {
+            setErrorMessage(error.message);
+            setIsLoading(false);
+            return;
           }
         }
 
@@ -139,8 +141,8 @@ export default function LoginPage() {
         }, 600);
       }
     } catch (err: any) {
-      const fallbackId = `user_${Date.now()}`;
-      await establishLocalSession(fallbackId, email, name || email.split('@')[0]);
+      setErrorMessage(err.message || 'An unexpected error occurred during authentication.');
+      setIsLoading(false);
     }
   };
 

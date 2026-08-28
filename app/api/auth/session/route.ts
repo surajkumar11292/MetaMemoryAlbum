@@ -41,7 +41,7 @@ export async function POST(req: Request) {
           id: targetId,
           email: email || 'archivist@metamemory.app',
           name: name || (email ? email.split('@')[0] : 'Archivist'),
-          avatar_url: avatar_url || null,
+          avatar_url: avatar_url || undefined,
           storage_used_bytes: 0,
         });
       }
