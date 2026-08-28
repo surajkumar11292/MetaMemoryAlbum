@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
-  Shield,
   ArrowRight,
   Loader2,
   Mail,
@@ -15,6 +14,8 @@ import {
   AlertCircle,
   Check,
   KeyRound,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { supabase } from '@/lib/supabase';
@@ -26,6 +27,7 @@ export default function LoginPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [termsAgreed, setTermsAgreed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isResetLoading, setIsResetLoading] = useState(false);
@@ -66,15 +68,17 @@ export default function LoginPage() {
     };
   }, []);
 
-  // Password Strength Calculation
+  // Strict & accurate password strength evaluation
   const getPasswordStrength = (pass: string) => {
-    if (!pass) return { score: 0, label: '', color: 'bg-border' };
-    let score = 0;
-    if (pass.length >= 6) score += 1;
-    if (pass.length >= 8 && /[0-9]/.test(pass)) score += 1;
-    if (pass.length >= 10 && /[^A-Za-z0-9]/.test(pass)) score += 1;
+    if (!pass || pass.length === 0) return { score: 0, label: '', color: 'bg-border' };
+    if (pass.length < 6) return { score: 1, label: 'Too short (min 6 chars)', color: 'bg-danger' };
 
-    if (score === 1) return { score: 1, label: 'Weak', color: 'bg-danger' };
+    let score = 0;
+    if (pass.length >= 8) score += 1;
+    if (/[0-9]/.test(pass) || /[^A-Za-z0-9]/.test(pass)) score += 1;
+    if (pass.length >= 10 && /[A-Z]/.test(pass) && /[0-9]/.test(pass) && /[^A-Za-z0-9]/.test(pass)) score += 1;
+
+    if (score <= 1) return { score: 1, label: 'Weak', color: 'bg-danger' };
     if (score === 2) return { score: 2, label: 'Good', color: 'bg-amber-accent' };
     return { score: 3, label: 'Strong', color: 'bg-success' };
   };
@@ -144,7 +148,7 @@ export default function LoginPage() {
             errText.toLowerCase().includes('invalid login credentials') ||
             errText.toLowerCase().includes('user not found')
           ) {
-            setErrorMessage('No existing account found with this email. Switched to "Create Account" for you.');
+            setErrorMessage('No account found with this email. We switched to "Create Account" for you.');
             setAuthMode('signup');
           } else {
             setErrorMessage(errText);
@@ -153,10 +157,10 @@ export default function LoginPage() {
           return;
         }
 
-        setSuccessMessage('Welcome back to your archive! Loading timeline...');
+        setSuccessMessage('Welcome back! Entering your memory archive...');
         setTimeout(() => {
           router.push('/app');
-        }, 500);
+        }, 400);
       } else {
         // Sign Up with JWT
         const res = await fetch('/api/auth/register', {
@@ -183,13 +187,13 @@ export default function LoginPage() {
         }
 
         if (data.requiresEmailConfirmation) {
-          setSuccessMessage('Account registered! Please check your email inbox to confirm your registration.');
+          setSuccessMessage('Account registered! Please check your email inbox to confirm your account.');
           setIsLoading(false);
         } else {
-          setSuccessMessage('Account registered successfully! Entering your archive...');
+          setSuccessMessage('Account created successfully! Loading your archive...');
           setTimeout(() => {
             router.push('/app');
-          }, 600);
+          }, 500);
         }
       }
     } catch (err: any) {
@@ -275,235 +279,25 @@ export default function LoginPage() {
         <ThemeToggle />
       </header>
 
-      {/* Center Auth Card */}
-      <main className="w-full max-w-md mx-auto my-6 sm:my-8 relative z-10">
-        <div className="border border-border bg-surface-raised/95 backdrop-blur-md p-6 sm:p-10 space-y-6">
-          {/* Badge & Title */}
-          <div className="text-center space-y-2">
-            <div className="w-10 h-10 border border-border bg-surface text-amber-accent flex items-center justify-center mx-auto mb-3">
-              <Shield className="w-4 h-4" />
-            </div>
-            <span className="font-mono text-[11px] uppercase tracking-widest text-amber-accent font-semibold block">
-              Archival Gate
-            </span>
+      {/* Center Auth Card - Modern Industry Standard */}
+      <main className="w-full max-w-[420px] mx-auto my-6 sm:my-8 relative z-10">
+        <div className="border border-border bg-surface-raised/95 backdrop-blur-md p-6 sm:p-8 space-y-6">
+          {/* Card Title & Subtitle */}
+          <div className="text-center space-y-1.5">
             <h1 className="font-display text-3xl sm:text-4xl font-medium text-foreground tracking-tight">
-              {authMode === 'signin' ? 'Access Your Archive' : 'Create Your Archive'}
+              {authMode === 'signin' ? 'Welcome back' : 'Create your archive'}
             </h1>
-            <p className="font-sans text-xs text-muted-foreground max-w-xs mx-auto leading-relaxed">
-              Your life, chronologically preserved. Sign in to view and curate your memory vaults.
+            <p className="font-sans text-xs text-muted-foreground">
+              {authMode === 'signin'
+                ? 'Sign in to continue to your memory timeline.'
+                : 'Start preserving your memories chronologically.'}
             </p>
           </div>
 
-          {/* Mode Switch Tabs */}
-          <div className="grid grid-cols-2 border border-border bg-surface p-1">
-            <button
-              type="button"
-              onClick={() => {
-                setAuthMode('signin');
-                setErrorMessage(null);
-                setSuccessMessage(null);
-              }}
-              className={`font-mono text-xs uppercase tracking-wider py-2.5 transition-all relative ${
-                authMode === 'signin'
-                  ? 'bg-surface-raised text-foreground font-semibold border border-border/80'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <span>Sign In</span>
-              {lastAuthMethod === 'email' && authMode === 'signin' && (
-                <span className="absolute -top-2 right-2 font-mono text-[9px] bg-amber-accent text-deep-charcoal px-1 uppercase font-bold tracking-tighter">
-                  Last Used
-                </span>
-              )}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setAuthMode('signup');
-                setErrorMessage(null);
-                setSuccessMessage(null);
-              }}
-              className={`font-mono text-xs uppercase tracking-wider py-2.5 transition-all ${
-                authMode === 'signup'
-                  ? 'bg-surface-raised text-foreground font-semibold border border-border/80'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Create Account
-            </button>
-          </div>
-
-          {/* Error / Success Notifications */}
-          {errorMessage && (
-            <div className="p-3 bg-danger/10 border border-danger/40 text-danger font-sans text-xs flex items-start space-x-2">
-              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-              <span>{errorMessage}</span>
-            </div>
-          )}
-
-          {successMessage && (
-            <div className="p-3 bg-success/10 border border-success/40 text-success font-sans text-xs flex items-start space-x-2">
-              <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
-              <span>{successMessage}</span>
-            </div>
-          )}
-
-          {/* Email & Password Form */}
-          <form onSubmit={handleEmailAuth} className="space-y-4">
-            {/* Full Name field on Sign Up */}
-            {authMode === 'signup' && (
-              <div className="space-y-1.5 animate-fade-in">
-                <label className="block font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
-                  Your Full Name
-                </label>
-                <div className="relative">
-                  <UserIcon className="w-4 h-4 text-muted-foreground absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                  <input
-                    type="text"
-                    required
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="e.g. Suraj Kumar"
-                    className="w-full bg-surface border border-border focus:border-amber-accent py-2.5 pl-10 pr-3 text-xs font-sans text-foreground placeholder-muted-foreground/60 focus:outline-none transition-colors"
-                  />
-                </div>
-              </div>
-            )}
-
-            <div className="space-y-1.5">
-              <label className="block font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
-                Email Address
-              </label>
-              <div className="relative">
-                <Mail className="w-4 h-4 text-muted-foreground absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="archivist@metamemory.app"
-                  className="w-full bg-surface border border-border focus:border-amber-accent py-2.5 pl-10 pr-3 text-xs font-sans text-foreground placeholder-muted-foreground/60 focus:outline-none transition-colors"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <div className="flex justify-between items-center">
-                <label className="block font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
-                  Password
-                </label>
-                {authMode === 'signin' && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setForgotEmail(email);
-                      setShowForgotModal(true);
-                      setForgotSuccess(false);
-                    }}
-                    className="font-mono text-[10px] text-muted-foreground hover:text-amber-accent uppercase tracking-wider transition-colors"
-                  >
-                    Forgot password?
-                  </button>
-                )}
-              </div>
-              <div className="relative">
-                <Lock className="w-4 h-4 text-muted-foreground absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                <input
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••••••"
-                  className="w-full bg-surface border border-border focus:border-amber-accent py-2.5 pl-10 pr-3 text-xs font-sans text-foreground placeholder-muted-foreground/60 focus:outline-none transition-colors"
-                />
-              </div>
-
-              {/* Password Strength Indicator on Sign Up */}
-              {authMode === 'signup' && password.length > 0 && (
-                <div className="pt-1.5 space-y-1">
-                  <div className="flex gap-1.5 h-1">
-                    <div
-                      className={`flex-1 transition-colors ${
-                        passwordStrength.score >= 1 ? passwordStrength.color : 'bg-border'
-                      }`}
-                    />
-                    <div
-                      className={`flex-1 transition-colors ${
-                        passwordStrength.score >= 2 ? passwordStrength.color : 'bg-border'
-                      }`}
-                    />
-                    <div
-                      className={`flex-1 transition-colors ${
-                        passwordStrength.score >= 3 ? passwordStrength.color : 'bg-border'
-                      }`}
-                    />
-                  </div>
-                  <div className="flex justify-between font-mono text-[10px] text-muted-foreground">
-                    <span>Password Strength</span>
-                    <span className="font-semibold">{passwordStrength.label}</span>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Terms & Conditions Checkbox on Sign Up */}
-            {authMode === 'signup' && (
-              <div className="pt-1">
-                <label className="flex items-start space-x-2.5 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={termsAgreed}
-                    onChange={(e) => setTermsAgreed(e.target.checked)}
-                    required
-                    className="mt-0.5 w-4 h-4 border border-border bg-surface accent-amber-500 rounded-none focus:ring-0"
-                  />
-                  <span className="font-sans text-[11px] text-muted-foreground leading-relaxed">
-                    I agree to the{' '}
-                    <span className="text-foreground underline">Terms of Archival Service</span> and
-                    acknowledge the{' '}
-                    <span className="text-foreground underline">Zero-Tracking Privacy Policy</span>.
-                  </span>
-                </label>
-              </div>
-            )}
-
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full flex items-center justify-center space-x-2 bg-amber-accent text-deep-charcoal font-mono text-xs uppercase tracking-widest py-3 px-4 font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50"
-            >
-              {isLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <>
-                  <span>{authMode === 'signin' ? 'Sign In With Email' : 'Create Archival Account'}</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </>
-              )}
-            </button>
-
-            {/* What you get micro-copy */}
-            {authMode === 'signup' && (
-              <p className="font-mono text-[10px] text-muted-foreground text-center uppercase tracking-wider pt-1">
-                ✓ Free forever &nbsp;•&nbsp; ✓ 5GB archival storage &nbsp;•&nbsp; ✓ Zero compression
-              </p>
-            )}
-          </form>
-
-          {/* Divider */}
-          <div className="relative flex items-center justify-center my-4">
-            <div className="border-t border-border w-full" />
-            <span className="bg-surface-raised px-3 font-mono text-[10px] uppercase text-muted-foreground shrink-0">
-              or continue with
-            </span>
-          </div>
-
-          {/* Google Sign-In with Smart "Last Used" badge */}
-          <div className="relative">
-            {lastAuthMethod === 'google' && (
-              <div className="mb-1.5 flex items-center justify-center space-x-1 text-amber-accent font-mono text-[10px] uppercase tracking-wider">
+          {/* Social Auth First (Industry Standard Hierarchy) */}
+          <div className="space-y-2">
+            {lastAuthMethod === 'google' && authMode === 'signin' && (
+              <div className="flex items-center justify-center space-x-1 text-amber-accent font-mono text-[10px] uppercase tracking-wider">
                 <Sparkles className="w-3 h-3" />
                 <span>Last Used Sign-In Method</span>
               </div>
@@ -512,7 +306,7 @@ export default function LoginPage() {
               type="button"
               onClick={handleGoogleSignIn}
               disabled={isLoading}
-              className={`w-full flex items-center justify-center space-x-3 bg-surface hover:bg-surface-container text-foreground font-mono text-xs uppercase tracking-wider py-3 px-4 transition-all disabled:opacity-50 ${
+              className={`w-full flex items-center justify-center space-x-3 bg-surface hover:bg-surface-container text-foreground font-sans text-sm font-medium py-3 px-4 transition-all disabled:opacity-50 ${
                 lastAuthMethod === 'google'
                   ? 'border-2 border-amber-accent'
                   : 'border border-border hover:border-amber-accent'
@@ -540,18 +334,229 @@ export default function LoginPage() {
             </button>
           </div>
 
-          {/* Quick Demo Access */}
-          <div className="pt-2 border-t border-border/60">
-            <button
-              type="button"
-              onClick={handleDemoAccess}
-              disabled={isLoading}
-              className="w-full flex items-center justify-center space-x-2 bg-surface hover:bg-surface-container border border-dashed border-border hover:border-amber-accent text-muted-foreground hover:text-foreground font-mono text-xs uppercase tracking-wider py-3 px-4 transition-colors"
-            >
-              <span>Explore Suraj's Demo Archive</span>
-              <ArrowRight className="w-3.5 h-3.5 text-amber-accent" />
-            </button>
+          {/* Divider */}
+          <div className="relative flex items-center justify-center">
+            <div className="border-t border-border w-full" />
+            <span className="bg-surface-raised px-3 font-mono text-[10px] uppercase text-muted-foreground shrink-0">
+              or continue with email
+            </span>
           </div>
+
+          {/* Notifications */}
+          {errorMessage && (
+            <div className="p-3 bg-danger/10 border border-danger/40 text-danger font-sans text-xs flex items-start space-x-2">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>{errorMessage}</span>
+            </div>
+          )}
+
+          {successMessage && (
+            <div className="p-3 bg-success/10 border border-success/40 text-success font-sans text-xs flex items-start space-x-2">
+              <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>{successMessage}</span>
+            </div>
+          )}
+
+          {/* Email Form */}
+          <form onSubmit={handleEmailAuth} className="space-y-4">
+            {/* Full Name field on Sign Up */}
+            {authMode === 'signup' && (
+              <div className="space-y-1.5 animate-fade-in">
+                <label className="block font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
+                  Full Name
+                </label>
+                <div className="relative">
+                  <UserIcon className="w-4 h-4 text-muted-foreground absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="text"
+                    required
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Suraj Kumar"
+                    className="w-full bg-surface border border-border focus:border-amber-accent py-2.5 pl-10 pr-3 text-sm font-sans text-foreground placeholder-muted-foreground/50 focus:outline-none transition-colors"
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              <label className="block font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
+                Email Address
+              </label>
+              <div className="relative">
+                <Mail className="w-4 h-4 text-muted-foreground absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="name@example.com"
+                  className="w-full bg-surface border border-border focus:border-amber-accent py-2.5 pl-10 pr-3 text-sm font-sans text-foreground placeholder-muted-foreground/50 focus:outline-none transition-colors"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-center">
+                <label className="block font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
+                  Password
+                </label>
+                {authMode === 'signin' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setForgotEmail(email);
+                      setShowForgotModal(true);
+                      setForgotSuccess(false);
+                    }}
+                    className="font-mono text-[10px] text-muted-foreground hover:text-amber-accent uppercase tracking-wider transition-colors"
+                  >
+                    Forgot password?
+                  </button>
+                )}
+              </div>
+              <div className="relative">
+                <Lock className="w-4 h-4 text-muted-foreground absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••••••"
+                  className="w-full bg-surface border border-border focus:border-amber-accent py-2.5 pl-10 pr-10 text-sm font-sans text-foreground placeholder-muted-foreground/50 focus:outline-none transition-colors"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1"
+                  title={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+
+              {/* Password Strength Indicator on Sign Up */}
+              {authMode === 'signup' && password.length > 0 && (
+                <div className="pt-1.5 space-y-1">
+                  <div className="flex gap-1.5 h-1">
+                    <div
+                      className={`flex-1 transition-colors ${
+                        passwordStrength.score >= 1 ? passwordStrength.color : 'bg-border'
+                      }`}
+                    />
+                    <div
+                      className={`flex-1 transition-colors ${
+                        passwordStrength.score >= 2 ? passwordStrength.color : 'bg-border'
+                      }`}
+                    />
+                    <div
+                      className={`flex-1 transition-colors ${
+                        passwordStrength.score >= 3 ? passwordStrength.color : 'bg-border'
+                      }`}
+                    />
+                  </div>
+                  <div className="flex justify-between font-mono text-[10px] text-muted-foreground">
+                    <span>Password Security</span>
+                    <span className={`font-semibold ${passwordStrength.score === 1 ? 'text-danger' : passwordStrength.score === 2 ? 'text-amber-accent' : 'text-success'}`}>
+                      {passwordStrength.label}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Terms & Conditions Checkbox on Sign Up */}
+            {authMode === 'signup' && (
+              <div className="pt-1">
+                <label className="flex items-start space-x-2.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={termsAgreed}
+                    onChange={(e) => setTermsAgreed(e.target.checked)}
+                    required
+                    className="mt-0.5 w-4 h-4 border border-border bg-surface accent-amber-500 rounded-none focus:ring-0"
+                  />
+                  <span className="font-sans text-[11px] text-muted-foreground leading-relaxed">
+                    I agree to the{' '}
+                    <span className="text-foreground underline">Terms of Archival Service</span> and{' '}
+                    <span className="text-foreground underline">Zero-Tracking Privacy Policy</span>.
+                  </span>
+                </label>
+              </div>
+            )}
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full flex items-center justify-center space-x-2 bg-amber-accent text-deep-charcoal font-mono text-xs uppercase tracking-widest py-3 px-4 font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50"
+            >
+              {isLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <>
+                  <span>{authMode === 'signin' ? 'Sign In with Email' : 'Create Archival Account'}</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </>
+              )}
+            </button>
+
+            {/* What you get micro-copy */}
+            {authMode === 'signup' && (
+              <p className="font-mono text-[10px] text-muted-foreground text-center uppercase tracking-wider pt-1">
+                ✓ Free forever &nbsp;•&nbsp; ✓ 5GB archival storage &nbsp;•&nbsp; ✓ Zero compression
+              </p>
+            )}
+          </form>
+
+          {/* Mode Switch Toggle Link (Clean Industry Standard) */}
+          <div className="pt-3 border-t border-border/60 text-center">
+            <p className="font-sans text-xs text-muted-foreground">
+              {authMode === 'signin' ? (
+                <>
+                  Don&apos;t have an account?{' '}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthMode('signup');
+                      setErrorMessage(null);
+                      setSuccessMessage(null);
+                    }}
+                    className="text-amber-accent font-medium hover:underline font-sans ml-1"
+                  >
+                    Create one →
+                  </button>
+                </>
+              ) : (
+                <>
+                  Already have an account?{' '}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthMode('signin');
+                      setErrorMessage(null);
+                      setSuccessMessage(null);
+                    }}
+                    className="text-amber-accent font-medium hover:underline font-sans ml-1"
+                  >
+                    Sign in →
+                  </button>
+                </>
+              )}
+            </p>
+          </div>
+        </div>
+
+        {/* Quiet Demo Link */}
+        <div className="mt-4 text-center">
+          <button
+            type="button"
+            onClick={handleDemoAccess}
+            disabled={isLoading}
+            className="font-mono text-xs text-muted-foreground hover:text-amber-accent transition-colors"
+          >
+            Just exploring? <span className="underline">Try Suraj&apos;s demo archive →</span>
+          </button>
         </div>
       </main>
 
@@ -561,12 +566,12 @@ export default function LoginPage() {
           <div className="bg-surface-raised border border-border max-w-md w-full p-6 space-y-4 relative">
             <div className="flex items-center space-x-2 text-amber-accent font-mono text-xs uppercase tracking-wider">
               <KeyRound className="w-4 h-4" />
-              <span>Reset Archival Access</span>
+              <span>Reset Password</span>
             </div>
 
             <h3 className="font-display text-2xl text-foreground font-medium">Reset Your Password</h3>
             <p className="font-sans text-xs text-muted-foreground">
-              Enter the email address associated with your archive. We will send a secure password reset link.
+              Enter your email address and we will send you a secure link to reset your password.
             </p>
 
             {forgotSuccess ? (
@@ -597,8 +602,8 @@ export default function LoginPage() {
                     required
                     value={forgotEmail}
                     onChange={(e) => setForgotEmail(e.target.value)}
-                    placeholder="archivist@metamemory.app"
-                    className="w-full bg-surface border border-border focus:border-amber-accent py-2.5 px-3 text-xs font-sans text-foreground focus:outline-none"
+                    placeholder="name@example.com"
+                    className="w-full bg-surface border border-border focus:border-amber-accent py-2.5 px-3 text-sm font-sans text-foreground focus:outline-none"
                   />
                 </div>
 

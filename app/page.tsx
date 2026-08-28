@@ -32,7 +32,7 @@ export default function LandingPage() {
               Sign In
             </Link>
             <Link
-              href="/app"
+              href="/login"
               className="inline-flex items-center space-x-1.5 bg-amber-accent text-deep-charcoal font-mono text-xs uppercase tracking-widest px-4 py-2 hover:bg-accent-hover font-semibold transition-colors"
             >
               <span>Launch App</span>

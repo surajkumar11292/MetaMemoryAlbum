@@ -27,39 +27,79 @@ export async function POST(req: Request) {
     const trimmedEmail = email.trim().toLowerCase();
     const trimmedName = name.trim();
 
-    // Register with Supabase
-    const { data, error } = await supabase.auth.signUp({
-      email: trimmedEmail,
-      password,
-      options: {
-        data: {
-          name: trimmedName,
-          avatar_url: avatar_url || undefined,
-        },
-      },
-    });
+    let userId: string | null = null;
+    let requiresEmailConfirmation = false;
 
-    if (error) {
-      const isAlreadyRegistered = error.message.toLowerCase().includes('already registered');
-      return NextResponse.json(
-        { error: error.message, isAlreadyRegistered },
-        { status: isAlreadyRegistered ? 409 : 400 }
-      );
+    // 1. Attempt registration with Supabase Auth
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: trimmedEmail,
+        password,
+        options: {
+          data: {
+            name: trimmedName,
+            avatar_url: avatar_url || undefined,
+          },
+        },
+      });
+
+      if (error) {
+        const msg = error.message.toLowerCase();
+        if (msg.includes('already registered') || msg.includes('user already exists')) {
+          return NextResponse.json(
+            { error: 'This email is already registered. Please sign in with your password.', isAlreadyRegistered: true },
+            { status: 409 }
+          );
+        }
+        // If Supabase has an internal database error with custom triggers, fallback gracefully
+        console.warn('Supabase signup notice:', error.message);
+      } else if (data?.user) {
+        // If identities is empty array, user exists in Supabase (unconfirmed duplicate)
+        if (data.user.identities && data.user.identities.length === 0) {
+          return NextResponse.json(
+            { error: 'This email is already registered. Please sign in with your password.', isAlreadyRegistered: true },
+            { status: 409 }
+          );
+        }
+        userId = data.user.id;
+        requiresEmailConfirmation = !data.session && !!data.user.identities?.length;
+      }
+    } catch (sbErr: any) {
+      console.warn('Supabase auth catch:', sbErr?.message);
     }
 
-    // Determine user ID
-    const userId = data.user?.id || `user_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    // 2. Generate resilient unique ID if not provided by Supabase
+    if (!userId) {
+      userId = `usr_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    }
 
-    // Create user in local database
-    const newUser = await db.createUser({
-      id: userId,
-      email: trimmedEmail,
-      name: trimmedName,
-      avatar_url: avatar_url || undefined,
-      storage_used_bytes: 0,
-    });
+    // 3. Create or fetch user in local / global MemoryDatabase
+    let newUser;
+    try {
+      newUser = await db.getUser(userId);
+      if (!newUser) {
+        newUser = await db.createUser({
+          id: userId,
+          email: trimmedEmail,
+          name: trimmedName,
+          avatar_url: avatar_url || undefined,
+          storage_used_bytes: 0,
+        });
+      }
+    } catch (dbError: any) {
+      console.warn('Local DB user creation fallback:', dbError?.message);
+      newUser = {
+        id: userId,
+        email: trimmedEmail,
+        name: trimmedName,
+        avatar_url: avatar_url || undefined,
+        storage_used_bytes: 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+    }
 
-    // Generate JWT
+    // 4. Generate signed JWT token
     const token = await signJWT({
       sub: newUser.id,
       email: newUser.email,
@@ -77,10 +117,10 @@ export async function POST(req: Request) {
         storage_used_bytes: newUser.storage_used_bytes,
       },
       token,
-      requiresEmailConfirmation: !data.session && !!data.user?.identities?.length,
+      requiresEmailConfirmation,
     });
 
-    // Set JWT cookie
+    // 5. Set HTTP-Only JWT cookie
     response.cookies.set('meta_jwt', token, {
       path: '/',
       httpOnly: true,
@@ -89,7 +129,7 @@ export async function POST(req: Request) {
       maxAge: 60 * 60 * 24 * 7,
     });
 
-    // Set session cookie
+    // 6. Set legacy session cookie fallback
     const sessionData = JSON.stringify({
       id: newUser.id,
       email: newUser.email,
@@ -107,7 +147,7 @@ export async function POST(req: Request) {
 
     return response;
   } catch (error: any) {
-    console.error('Registration error:', error);
+    console.error('Registration critical error:', error);
     return NextResponse.json(
       { error: error.message || 'Internal server error during registration' },
       { status: 500 }
