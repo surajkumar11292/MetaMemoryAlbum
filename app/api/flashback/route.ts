@@ -1,11 +1,15 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { getSessionUser } from '@/lib/auth';
 import { SEED_USER } from '@/lib/db/seed';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
   try {
+    const user = await getSessionUser();
+    const userId = user ? user.id : SEED_USER.id;
+
     const { searchParams } = new URL(req.url);
     const monthParam = searchParams.get('month');
     const month = monthParam ? parseInt(monthParam, 10) : new Date().getMonth() + 1;
@@ -14,9 +18,9 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'Invalid month number (1-12)' }, { status: 400 });
     }
 
-    const flashback = await db.getFlashback(SEED_USER.id, month);
+    const flashback = await db.getFlashback(userId, month);
 
-    return NextResponse.json({ flashback });
+    return NextResponse.json({ flashback, user });
   } catch (error) {
     console.error('Failed to get flashback:', error);
     return NextResponse.json({ error: 'Failed to retrieve flashback data' }, { status: 500 });

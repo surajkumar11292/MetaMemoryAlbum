@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { getSessionUser } from '@/lib/auth';
 import { SEED_USER } from '@/lib/db/seed';
 import { extractPhotoMetadata } from '@/lib/exif';
 import { Photo } from '@/lib/types';
 import path from 'path';
+
+export const dynamic = 'force-dynamic';
 
 // Allowed MIME types
 const ALLOWED_MIME_TYPES = new Set([
@@ -18,6 +21,9 @@ const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25 MB
 
 export async function POST(req: Request) {
   try {
+    const user = await getSessionUser();
+    const userId = user ? user.id : SEED_USER.id;
+
     const formData = await req.formData();
     const files = formData.getAll('files') as File[];
 
@@ -49,7 +55,7 @@ export async function POST(req: Request) {
 
       const newPhoto: Photo = {
         id: photoId,
-        user_id: SEED_USER.id,
+        user_id: userId,
         storage_key: storageKey,
         url: base64Data,
         thumbnail_url: base64Data,
@@ -63,32 +69,33 @@ export async function POST(req: Request) {
         file_size: file.size,
         width: metadata.width,
         height: metadata.height,
-        aspect_ratio: metadata.aspect_ratio || 1.5,
+        aspect_ratio: metadata.width && metadata.height ? parseFloat((metadata.width / metadata.height).toFixed(3)) : 1.5,
         latitude: metadata.latitude,
         longitude: metadata.longitude,
+        location_name: metadata.latitude && metadata.longitude ? `GPS: ${metadata.latitude.toFixed(2)}, ${metadata.longitude.toFixed(2)}` : undefined,
         camera_model: metadata.camera_model,
         lens_model: metadata.lens_model,
         iso: metadata.iso,
         focal_length: metadata.focal_length,
         exposure_time: metadata.exposure_time,
-        caption: '',
+        caption: undefined,
         is_favorite: false,
         is_cover: false,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
 
-      await db.addPhoto(newPhoto);
-      uploadedPhotos.push(newPhoto);
+      const saved = await db.addPhoto(newPhoto);
+      uploadedPhotos.push(saved);
     }
 
     return NextResponse.json({
       success: true,
-      count: uploadedPhotos.length,
       photos: uploadedPhotos,
+      count: uploadedPhotos.length,
     });
   } catch (error) {
-    console.error('Photo upload failed:', error);
-    return NextResponse.json({ error: 'Failed to process photo upload' }, { status: 500 });
+    console.error('Upload error:', error);
+    return NextResponse.json({ error: 'Failed to upload and parse photo metadata' }, { status: 500 });
   }
 }

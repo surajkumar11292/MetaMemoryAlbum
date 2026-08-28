@@ -1,12 +1,18 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { getSessionUser } from '@/lib/auth';
 import { SEED_USER } from '@/lib/db/seed';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET(
   req: Request,
   { params }: { params: { year: string; month: string } }
 ) {
   try {
+    const user = await getSessionUser();
+    const userId = user ? user.id : SEED_USER.id;
+
     const year = parseInt(params.year, 10);
     const month = parseInt(params.month, 10);
 
@@ -14,7 +20,7 @@ export async function GET(
       return NextResponse.json({ error: 'Invalid year or month' }, { status: 400 });
     }
 
-    const monthDetails = await db.getMonthDetails(SEED_USER.id, year, month);
+    const monthDetails = await db.getMonthDetails(userId, year, month);
     if (!monthDetails) {
       return NextResponse.json({ error: 'Month not found' }, { status: 404 });
     }
@@ -31,18 +37,21 @@ export async function PATCH(
   { params }: { params: { year: string; month: string } }
 ) {
   try {
+    const user = await getSessionUser();
+    const userId = user ? user.id : SEED_USER.id;
+
     const year = parseInt(params.year, 10);
     const month = parseInt(params.month, 10);
     const body = await req.json();
 
     if (body.cover_photo_id) {
-      const success = await db.setMonthCover(SEED_USER.id, year, month, body.cover_photo_id);
+      const success = await db.setMonthCover(userId, year, month, body.cover_photo_id);
       if (!success) {
         return NextResponse.json({ error: 'Failed to set cover photo' }, { status: 400 });
       }
     }
 
-    const updated = await db.getMonthDetails(SEED_USER.id, year, month);
+    const updated = await db.getMonthDetails(userId, year, month);
     return NextResponse.json({ success: true, month: updated });
   } catch (error) {
     return NextResponse.json({ error: 'Failed to update month preferences' }, { status: 500 });

@@ -3,13 +3,15 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Shield, ArrowRight, Loader2, Mail, Lock, Sparkles, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Shield, ArrowRight, Loader2, Mail, Lock, User as UserIcon, Sparkles, CheckCircle2, AlertCircle } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { supabase } from '@/lib/supabase';
+import { SEED_USER } from '@/lib/db/seed';
 
 export default function LoginPage() {
   const router = useRouter();
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -32,7 +34,9 @@ export default function LoginPage() {
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
         localStorage.setItem('meta_last_auth_method', 'google');
-        await establishLocalSession(session.user.email || undefined);
+        const googleName = session.user.user_metadata?.full_name || session.user.user_metadata?.name || session.user.email?.split('@')[0];
+        const googleAvatar = session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture;
+        await establishLocalSession(session.user.id, session.user.email || undefined, googleName, googleAvatar);
       }
     });
 
@@ -47,7 +51,6 @@ export default function LoginPage() {
     try {
       localStorage.setItem('meta_last_auth_method', 'google');
       
-      // Attempt Supabase Google OAuth
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -57,12 +60,12 @@ export default function LoginPage() {
 
       if (error) {
         console.warn('Supabase OAuth notice:', error.message);
-        // Seamless fallback to demo session
-        await establishLocalSession();
+        // Fallback to local session
+        await establishLocalSession(`user_${Date.now()}`, 'google.user@metamemory.app', 'Google Archivist');
       }
     } catch (err: any) {
-      console.warn('Fallback to demo session:', err);
-      await establishLocalSession();
+      console.warn('Fallback to local session:', err);
+      await establishLocalSession(`user_${Date.now()}`, 'google.user@metamemory.app', 'Google Archivist');
     }
   };
 
@@ -70,6 +73,11 @@ export default function LoginPage() {
     e.preventDefault();
     if (!email || !password) {
       setErrorMessage('Please enter both your email and password.');
+      return;
+    }
+
+    if (authMode === 'signup' && !name.trim()) {
+      setErrorMessage('Please enter your full name.');
       return;
     }
 
@@ -93,18 +101,26 @@ export default function LoginPage() {
             setIsLoading(false);
             return;
           } else {
-            // Local fallback session
-            await establishLocalSession(email);
+            // Local fallback login
+            const generatedId = `user_${btoa(email).replace(/[^a-zA-Z0-9]/g, '').substring(0, 12)}`;
+            await establishLocalSession(generatedId, email, email.split('@')[0]);
             return;
           }
         }
 
-        await establishLocalSession(email);
+        const userId = data.user?.id || `user_${btoa(email).replace(/[^a-zA-Z0-9]/g, '').substring(0, 12)}`;
+        const userName = data.user?.user_metadata?.name || email.split('@')[0];
+        await establishLocalSession(userId, email, userName);
       } else {
         // Sign Up
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
+          options: {
+            data: {
+              name: name.trim(),
+            },
+          },
         });
 
         if (error) {
@@ -116,22 +132,29 @@ export default function LoginPage() {
           }
         }
 
+        const newUserId = data.user?.id || `user_${Date.now()}`;
         setSuccessMessage('Account registered successfully! Entering your archive...');
         setTimeout(async () => {
-          await establishLocalSession(email);
-        }, 800);
+          await establishLocalSession(newUserId, email, name.trim());
+        }, 600);
       }
     } catch (err: any) {
-      await establishLocalSession(email);
+      const fallbackId = `user_${Date.now()}`;
+      await establishLocalSession(fallbackId, email, name || email.split('@')[0]);
     }
   };
 
-  const establishLocalSession = async (userEmail?: string) => {
+  const establishLocalSession = async (userId?: string, userEmail?: string, userName?: string, userAvatar?: string) => {
     try {
       await fetch('/api/auth/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: 'user_archivist_01', email: userEmail }),
+        body: JSON.stringify({
+          userId: userId || `user_${Date.now()}`,
+          email: userEmail || 'archivist@metamemory.app',
+          name: userName || 'Archivist',
+          avatar_url: userAvatar || null,
+        }),
       });
       router.push('/app');
     } catch (e) {
@@ -145,7 +168,7 @@ export default function LoginPage() {
   const handleDemoAccess = async () => {
     setIsLoading(true);
     localStorage.setItem('meta_last_auth_method', 'demo');
-    await establishLocalSession();
+    await establishLocalSession(SEED_USER.id, SEED_USER.email, SEED_USER.name, SEED_USER.avatar_url || '/avatar.jpg');
   };
 
   return (
@@ -242,6 +265,26 @@ export default function LoginPage() {
 
           {/* Email & Password Form */}
           <form onSubmit={handleEmailAuth} className="space-y-4">
+            {/* Full Name field on Sign Up */}
+            {authMode === 'signup' && (
+              <div className="space-y-1.5 animate-fade-in">
+                <label className="block font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
+                  Your Full Name
+                </label>
+                <div className="relative">
+                  <UserIcon className="w-4 h-4 text-muted-foreground absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="text"
+                    required
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="e.g. John Doe"
+                    className="w-full bg-surface border border-border focus:border-amber-accent py-2.5 pl-10 pr-3 text-xs font-sans text-foreground placeholder-muted-foreground/60 focus:outline-none transition-colors"
+                  />
+                </div>
+              </div>
+            )}
+
             <div className="space-y-1.5">
               <label className="block font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
                 Email Address

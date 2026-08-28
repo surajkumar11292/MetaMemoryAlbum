@@ -8,13 +8,14 @@ import { ShareDialog } from '@/components/share/ShareDialog';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { SkeletonGallery } from '@/components/ui/Skeleton';
 import { UploadModal } from '@/components/upload/UploadModal';
-import { YearSummary } from '@/lib/types';
+import { YearSummary, User } from '@/lib/types';
 import { Sparkles, Calendar, Layers, Plus } from 'lucide-react';
 
 export default function DashboardPage() {
   const [years, setYears] = useState<YearSummary[]>([]);
   const [availableYears, setAvailableYears] = useState<number[]>([]);
   const [selectedYear, setSelectedYear] = useState<number | 'all'>('all');
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
 
@@ -38,6 +39,9 @@ export default function DashboardPage() {
       const data = await res.json();
       setYears(data.years || []);
       setAvailableYears(data.availableYears || []);
+      if (data.user) {
+        setUser(data.user);
+      }
     } catch (err) {
       console.error('Failed to load memories:', err);
     } finally {
@@ -71,7 +75,7 @@ export default function DashboardPage() {
               <span>Living Chronological Archive</span>
             </div>
             <h1 className="font-display text-4xl sm:text-5xl font-medium text-foreground tracking-tight">
-              Your Memory Timeline
+              {user?.name ? `${user.name}'s Memory Timeline` : 'Your Memory Timeline'}
             </h1>
             <p className="font-sans text-xs sm:text-sm text-muted-foreground mt-2">
               All photographs organized automatically by capture date.
@@ -123,9 +127,9 @@ export default function DashboardPage() {
           </div>
         ) : (
           <EmptyState
-            title="No memories found"
-            description="Start by adding your first photos. We will immediately extract capture timestamps and build your chronological memory timeline."
-            actionText="Add photographs"
+            title="Your archive is a blank canvas"
+            description="Upload your first photographs to begin. We will immediately extract capture timestamps and construct your personal month-by-month vaults."
+            actionText="Add your first memories"
             onAction={() => setIsUploadOpen(true)}
           />
         )}

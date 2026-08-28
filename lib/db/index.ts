@@ -30,6 +30,19 @@ class MemoryDatabase {
     return this.users.get(userId) || null;
   }
 
+  public async createUser(user: Partial<User> & { id: string; email: string }): Promise<User> {
+    const newUser: User = {
+      id: user.id,
+      email: user.email,
+      name: user.name || user.email.split('@')[0],
+      avatar_url: user.avatar_url || undefined,
+      storage_used_bytes: user.storage_used_bytes || 0,
+      created_at: new Date().toISOString(),
+    };
+    this.users.set(user.id, newUser);
+    return newUser;
+  }
+
   public async getPhotos(userId: string, filter?: { year?: number; month?: number; is_favorite?: boolean; search?: string }): Promise<Photo[]> {
     let result = Array.from(this.photos.values()).filter(p => p.user_id === userId);
 
