@@ -43,6 +43,14 @@ class MemoryDatabase {
     return newUser;
   }
 
+  public async updateUser(userId: string, updates: Partial<User>): Promise<User | null> {
+    const user = this.users.get(userId);
+    if (!user) return null;
+    const updated = { ...user, ...updates };
+    this.users.set(userId, updated);
+    return updated;
+  }
+
   public async getPhotos(userId: string, filter?: { year?: number; month?: number; is_favorite?: boolean; search?: string }): Promise<Photo[]> {
     let result = Array.from(this.photos.values()).filter(p => p.user_id === userId);
 

@@ -74,6 +74,49 @@ export async function POST(req: Request) {
   }
 }
 
+export async function PATCH(req: Request) {
+  try {
+    const user = await getSessionUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await req.json();
+    const { name, avatar_url } = body;
+
+    const updated = await db.updateUser(user.id, {
+      name: name !== undefined ? name : user.name,
+      avatar_url: avatar_url !== undefined ? avatar_url : user.avatar_url,
+    });
+
+    if (!updated) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    const response = NextResponse.json({ success: true, user: updated });
+
+    const cookieData = JSON.stringify({
+      id: updated.id,
+      email: updated.email,
+      name: updated.name,
+      avatar_url: updated.avatar_url,
+    });
+
+    response.cookies.set('meta_session_user', cookieData, {
+      path: '/',
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 60 * 60 * 24 * 30,
+    });
+
+    return response;
+  } catch (error) {
+    console.error('Update profile error:', error);
+    return NextResponse.json({ error: 'Failed to update profile' }, { status: 500 });
+  }
+}
+
 export async function DELETE() {
   const response = NextResponse.json({ success: true });
   response.cookies.delete('meta_session_user');
