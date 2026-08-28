@@ -14,61 +14,79 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Email and password are required.' }, { status: 400 });
     }
 
-    // Authenticate with Supabase
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: email.trim().toLowerCase(),
-      password,
-    });
+    const trimmedEmail = email.trim().toLowerCase();
+    let authenticatedUser: any = null;
 
-    if (error || !data?.user) {
+    // 1. Try Supabase Auth first
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: trimmedEmail,
+        password,
+      });
+
+      if (!error && data?.user) {
+        const sbUser = data.user;
+        const name =
+          sbUser.user_metadata?.full_name ||
+          sbUser.user_metadata?.name ||
+          sbUser.email?.split('@')[0] ||
+          'Archivist';
+        const avatarUrl =
+          sbUser.user_metadata?.avatar_url || sbUser.user_metadata?.picture || undefined;
+
+        let dbUser = await db.getUser(sbUser.id);
+        if (!dbUser) {
+          dbUser = await db.createUser({
+            id: sbUser.id,
+            email: sbUser.email || trimmedEmail,
+            name,
+            avatar_url: avatarUrl,
+            storage_used_bytes: 0,
+          });
+        }
+        authenticatedUser = dbUser;
+      }
+    } catch (sbErr) {
+      console.warn('Supabase sign in attempt exception:', sbErr);
+    }
+
+    // 2. If Supabase auth was not successful, verify against local database credentials
+    if (!authenticatedUser) {
+      const credResult = await db.verifyCredentials(trimmedEmail, password);
+      if (credResult.valid && credResult.user) {
+        authenticatedUser = credResult.user;
+      }
+    }
+
+    // 3. If neither method authenticated, return 401
+    if (!authenticatedUser) {
       return NextResponse.json(
-        { error: error?.message || 'Invalid credentials' },
+        { error: 'Invalid email or password.' },
         { status: 401 }
       );
     }
 
-    const sbUser = data.user;
-    const name =
-      sbUser.user_metadata?.full_name ||
-      sbUser.user_metadata?.name ||
-      sbUser.email?.split('@')[0] ||
-      'Archivist';
-    const avatarUrl =
-      sbUser.user_metadata?.avatar_url || sbUser.user_metadata?.picture || undefined;
-
-    // Ensure user exists in database
-    let dbUser = await db.getUser(sbUser.id);
-    if (!dbUser) {
-      dbUser = await db.createUser({
-        id: sbUser.id,
-        email: sbUser.email || email,
-        name,
-        avatar_url: avatarUrl,
-        storage_used_bytes: 0,
-      });
-    }
-
-    // Generate JWT token
+    // 4. Generate JWT token
     const token = await signJWT({
-      sub: dbUser.id,
-      email: dbUser.email,
-      name: dbUser.name,
-      avatar_url: dbUser.avatar_url,
+      sub: authenticatedUser.id,
+      email: authenticatedUser.email,
+      name: authenticatedUser.name,
+      avatar_url: authenticatedUser.avatar_url,
     });
 
     const response = NextResponse.json({
       success: true,
       user: {
-        id: dbUser.id,
-        email: dbUser.email,
-        name: dbUser.name,
-        avatar_url: dbUser.avatar_url,
-        storage_used_bytes: dbUser.storage_used_bytes,
+        id: authenticatedUser.id,
+        email: authenticatedUser.email,
+        name: authenticatedUser.name,
+        avatar_url: authenticatedUser.avatar_url,
+        storage_used_bytes: authenticatedUser.storage_used_bytes,
       },
       token,
     });
 
-    // Set HTTP-Only JWT cookie
+    // 5. Set HTTP-Only JWT cookie
     response.cookies.set('meta_jwt', token, {
       path: '/',
       httpOnly: true,
@@ -77,12 +95,12 @@ export async function POST(req: Request) {
       maxAge: 60 * 60 * 24 * 7, // 7 days
     });
 
-    // Also set legacy meta_session_user for fallback
+    // 6. Also set legacy meta_session_user for fallback
     const sessionData = JSON.stringify({
-      id: dbUser.id,
-      email: dbUser.email,
-      name: dbUser.name,
-      avatar_url: dbUser.avatar_url,
+      id: authenticatedUser.id,
+      email: authenticatedUser.email,
+      name: authenticatedUser.name,
+      avatar_url: authenticatedUser.avatar_url,
     });
 
     response.cookies.set('meta_session_user', sessionData, {

@@ -5,6 +5,7 @@ import { getMonthName } from '../exif';
 // In-Memory Database Store (Simulating PostgreSQL/Supabase with local reactivity & persistence)
 class MemoryDatabase {
   private users: Map<string, User> = new Map();
+  private credentials: Map<string, { userId: string; email: string; passwordHash: string }> = new Map();
   private photos: Map<string, Photo> = new Map();
   private monthPrefs: Map<string, MonthPreference> = new Map();
   private shareLinks: Map<string, ShareLink> = new Map();
@@ -28,6 +29,37 @@ class MemoryDatabase {
 
   public async getUser(userId: string): Promise<User | null> {
     return this.users.get(userId) || null;
+  }
+
+  public async getUserByEmail(email: string): Promise<User | null> {
+    const target = email.trim().toLowerCase();
+    const allUsers = Array.from(this.users.values());
+    for (const u of allUsers) {
+      if (u.email.toLowerCase() === target) {
+        return u;
+      }
+    }
+    return null;
+  }
+
+  public async saveCredentials(email: string, passwordHash: string, userId: string): Promise<void> {
+    this.credentials.set(email.trim().toLowerCase(), {
+      userId,
+      email: email.trim().toLowerCase(),
+      passwordHash,
+    });
+  }
+
+  public async verifyCredentials(email: string, passwordAttempt: string): Promise<{ valid: boolean; user: User | null }> {
+    const cred = this.credentials.get(email.trim().toLowerCase());
+    if (!cred) {
+      return { valid: false, user: null };
+    }
+    if (cred.passwordHash === passwordAttempt) {
+      const user = await this.getUser(cred.userId);
+      return { valid: true, user };
+    }
+    return { valid: false, user: null };
   }
 
   public async createUser(user: Partial<User> & { id: string; email: string }): Promise<User> {

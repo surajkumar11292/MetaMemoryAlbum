@@ -99,6 +99,9 @@ export async function POST(req: Request) {
       };
     }
 
+    // Save credentials in database
+    await db.saveCredentials(trimmedEmail, password, newUser.id);
+
     // 4. Generate signed JWT token
     const token = await signJWT({
       sub: newUser.id,
