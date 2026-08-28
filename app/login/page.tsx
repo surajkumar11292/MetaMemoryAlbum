@@ -27,6 +27,18 @@ export default function LoginPage() {
     } catch (e) {
       // ignore
     }
+
+    // Listen for OAuth redirects
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
+        localStorage.setItem('meta_last_auth_method', 'google');
+        await establishLocalSession(session.user.email || undefined);
+      }
+    });
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
   }, []);
 
   const handleGoogleSignIn = async () => {
