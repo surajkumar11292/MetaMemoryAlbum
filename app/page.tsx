@@ -1,7 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { LandingHero } from '@/components/landing/LandingHero';
 import { TimelineDemo } from '@/components/landing/TimelineDemo';
 import { FlashbackTeaser } from '@/components/landing/FlashbackTeaser';
@@ -9,9 +10,18 @@ import { SharingTeaser } from '@/components/landing/SharingTeaser';
 import { LandingFooter } from '@/components/landing/LandingFooter';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { ArrowRight } from 'lucide-react';
-import { SignInButton, SignUpButton, SignedIn, SignedOut } from '@clerk/nextjs';
+import { SignInButton, SignUpButton, SignedIn, SignedOut, useClerk } from '@clerk/nextjs';
 
 export default function LandingPage() {
+  const searchParams = useSearchParams();
+  const { openSignIn } = useClerk();
+
+  useEffect(() => {
+    if (searchParams.get('sign-in') === 'true') {
+      openSignIn({ fallbackRedirectUrl: '/app' });
+    }
+  }, [searchParams, openSignIn]);
+
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
       {/* Top Marketing Navigation */}
