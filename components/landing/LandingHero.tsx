@@ -1,11 +1,18 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, Layers, ShieldCheck } from 'lucide-react';
-import { SignUpButton, SignedIn, SignedOut } from '@clerk/nextjs';
+import { SignUpButton, useUser } from '@clerk/nextjs';
 
 export function LandingHero() {
+  const { isSignedIn, isLoaded } = useUser();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   return (
     <section className="relative overflow-hidden pt-12 pb-20 md:pt-20 md:pb-32 border-b border-border">
       {/* Background Accent Mesh */}
@@ -30,16 +37,7 @@ export function LandingHero() {
             </p>
 
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-3 sm:space-y-0 sm:space-x-4 pt-2">
-              <SignedOut>
-                <SignUpButton mode="modal" fallbackRedirectUrl="/app">
-                  <button className="inline-flex items-center justify-center space-x-2 bg-amber-accent text-deep-charcoal font-mono text-xs uppercase tracking-widest px-8 py-4 hover:bg-accent-hover font-semibold transition-all shadow-sm group cursor-pointer">
-                    <span>Start your memory album</span>
-                    <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-                  </button>
-                </SignUpButton>
-              </SignedOut>
-
-              <SignedIn>
+              {mounted && isLoaded && isSignedIn ? (
                 <Link
                   href="/app"
                   className="inline-flex items-center justify-center space-x-2 bg-amber-accent text-deep-charcoal font-mono text-xs uppercase tracking-widest px-8 py-4 hover:bg-accent-hover font-semibold transition-all shadow-sm group"
@@ -47,7 +45,14 @@ export function LandingHero() {
                   <span>Open your archive</span>
                   <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
                 </Link>
-              </SignedIn>
+              ) : (
+                <SignUpButton mode="modal" fallbackRedirectUrl="/app">
+                  <button className="inline-flex items-center justify-center space-x-2 bg-amber-accent text-deep-charcoal font-mono text-xs uppercase tracking-widest px-8 py-4 hover:bg-accent-hover font-semibold transition-all shadow-sm group cursor-pointer">
+                    <span>Start your memory album</span>
+                    <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                  </button>
+                </SignUpButton>
+              )}
 
               <Link
                 href="/app"

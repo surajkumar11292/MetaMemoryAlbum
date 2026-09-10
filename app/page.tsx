@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { LandingHero } from '@/components/landing/LandingHero';
@@ -10,17 +10,16 @@ import { SharingTeaser } from '@/components/landing/SharingTeaser';
 import { LandingFooter } from '@/components/landing/LandingFooter';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { ArrowRight } from 'lucide-react';
-import { SignInButton, SignUpButton, SignedIn, SignedOut, useClerk } from '@clerk/nextjs';
+import { SignInButton, SignUpButton, useUser } from '@clerk/nextjs';
 
 export default function LandingPage() {
   const searchParams = useSearchParams();
-  const { openSignIn } = useClerk();
+  const { isSignedIn, isLoaded } = useUser();
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    if (searchParams.get('sign-in') === 'true') {
-      openSignIn({ fallbackRedirectUrl: '/app' });
-    }
-  }, [searchParams, openSignIn]);
+    setMounted(true);
+  }, []);
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
@@ -39,22 +38,7 @@ export default function LandingPage() {
           <div className="flex items-center space-x-3">
             <ThemeToggle />
 
-            <SignedOut>
-              <SignInButton mode="modal" fallbackRedirectUrl="/app">
-                <button className="font-mono text-xs uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors px-3 py-2 cursor-pointer">
-                  Sign In
-                </button>
-              </SignInButton>
-
-              <SignUpButton mode="modal" fallbackRedirectUrl="/app">
-                <button className="inline-flex items-center space-x-1.5 bg-amber-accent text-deep-charcoal font-mono text-xs uppercase tracking-widest px-4 py-2 hover:bg-accent-hover font-semibold transition-colors cursor-pointer">
-                  <span>Get Started</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </button>
-              </SignUpButton>
-            </SignedOut>
-
-            <SignedIn>
+            {mounted && isLoaded && isSignedIn ? (
               <Link
                 href="/app"
                 className="inline-flex items-center space-x-1.5 bg-amber-accent text-deep-charcoal font-mono text-xs uppercase tracking-widest px-4 py-2 hover:bg-accent-hover font-semibold transition-colors"
@@ -62,7 +46,22 @@ export default function LandingPage() {
                 <span>Enter Archive</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
-            </SignedIn>
+            ) : (
+              <>
+                <SignInButton mode="modal" fallbackRedirectUrl="/app">
+                  <button className="font-mono text-xs uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors px-3 py-2 cursor-pointer">
+                    Sign In
+                  </button>
+                </SignInButton>
+
+                <SignUpButton mode="modal" fallbackRedirectUrl="/app">
+                  <button className="inline-flex items-center space-x-1.5 bg-amber-accent text-deep-charcoal font-mono text-xs uppercase tracking-widest px-4 py-2 hover:bg-accent-hover font-semibold transition-colors cursor-pointer">
+                    <span>Get Started</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </SignUpButton>
+              </>
+            )}
           </div>
         </div>
       </header>
@@ -92,16 +91,7 @@ export default function LandingPage() {
             Begin with a single month or your entire life&apos;s photo collection. Your memories belong to you.
           </p>
           <div className="flex justify-center items-center space-x-4">
-            <SignedOut>
-              <SignUpButton mode="modal" fallbackRedirectUrl="/app">
-                <button className="inline-flex items-center space-x-2 bg-amber-accent text-deep-charcoal font-mono text-xs uppercase tracking-widest px-8 py-4 hover:bg-accent-hover font-semibold transition-all shadow-md group cursor-pointer">
-                  <span>Create your memory album</span>
-                  <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-                </button>
-              </SignUpButton>
-            </SignedOut>
-
-            <SignedIn>
+            {mounted && isLoaded && isSignedIn ? (
               <Link
                 href="/app"
                 className="inline-flex items-center space-x-2 bg-amber-accent text-deep-charcoal font-mono text-xs uppercase tracking-widest px-8 py-4 hover:bg-accent-hover font-semibold transition-all shadow-md group"
@@ -109,7 +99,14 @@ export default function LandingPage() {
                 <span>Go to your timeline</span>
                 <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
               </Link>
-            </SignedIn>
+            ) : (
+              <SignUpButton mode="modal" fallbackRedirectUrl="/app">
+                <button className="inline-flex items-center space-x-2 bg-amber-accent text-deep-charcoal font-mono text-xs uppercase tracking-widest px-8 py-4 hover:bg-accent-hover font-semibold transition-all shadow-md group cursor-pointer">
+                  <span>Create your memory album</span>
+                  <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                </button>
+              </SignUpButton>
+            )}
           </div>
         </div>
       </section>
