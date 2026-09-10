@@ -1,14 +1,15 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getSessionUser } from '@/lib/auth';
-import { SEED_USER } from '@/lib/db/seed';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
     const user = await getSessionUser();
-    const userId = user ? user.id : SEED_USER.id;
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     const body = await req.json();
     const { year, month } = body;
@@ -17,7 +18,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Year and month are required' }, { status: 400 });
     }
 
-    const link = await db.createOrGetShareLink(userId, parseInt(year, 10), parseInt(month, 10));
+    const link = await db.createOrGetShareLink(user.id, parseInt(year, 10), parseInt(month, 10));
     return NextResponse.json({ success: true, link });
   } catch (error) {
     return NextResponse.json({ error: 'Failed to generate share link' }, { status: 500 });
@@ -27,7 +28,9 @@ export async function POST(req: Request) {
 export async function DELETE(req: Request) {
   try {
     const user = await getSessionUser();
-    const userId = user ? user.id : SEED_USER.id;
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     const body = await req.json();
     const { token } = body;
@@ -36,7 +39,7 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ error: 'Token is required' }, { status: 400 });
     }
 
-    const success = await db.revokeShareLink(userId, token);
+    const success = await db.revokeShareLink(user.id, token);
     return NextResponse.json({ success });
   } catch (error) {
     return NextResponse.json({ error: 'Failed to revoke share link' }, { status: 500 });

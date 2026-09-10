@@ -1,67 +1,48 @@
-import { cookies } from 'next/headers';
+import { auth, currentUser } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
 import { User } from '@/lib/types';
-import { SEED_USER } from '@/lib/db/seed';
-import { verifyJWT } from '@/lib/jwt';
 
 export async function getSessionUser(): Promise<User | null> {
-  const cookieStore = cookies();
+  const { userId } = auth();
 
-  // 1. Check for signed JWT cookie
-  const jwtToken = cookieStore.get('meta_jwt')?.value;
-  if (jwtToken) {
-    const payload = await verifyJWT(jwtToken);
-    if (payload && payload.sub) {
-      const user = await db.getUser(payload.sub);
-      if (user) return user;
-
-      // If user not in memory yet (e.g. fresh worker), instantiate profile record
-      return await db.createUser({
-        id: payload.sub,
-        email: payload.email || 'archivist@metamemory.app',
-        name: payload.name || (payload.email ? payload.email.split('@')[0] : 'Archivist'),
-        avatar_url: payload.avatar_url || undefined,
-        storage_used_bytes: 0,
-      });
-    }
-  }
-
-  // 2. Check for session cookie
-  const sessionData = cookieStore.get('meta_session_user')?.value;
-  if (!sessionData) {
+  if (!userId) {
     return null;
   }
 
-  // Check if session contains serialized JSON or raw user ID
-  if (sessionData.startsWith('{')) {
+  // Look up user in MongoDB
+  let user = await db.getUser(userId);
+
+  if (!user) {
+    // Get profile details from Clerk if available
+    let email = 'user@metamemory.app';
+    let name = 'Archivist';
+    let avatar_url: string | undefined = undefined;
+
     try {
-      const parsed = JSON.parse(sessionData);
-      const user = await db.getUser(parsed.id);
-      if (user) return user;
-
-      // If not yet in DB, create profile record
-      return await db.createUser({
-        id: parsed.id,
-        email: parsed.email || 'archivist@metamemory.app',
-        name: parsed.name || 'Archivist',
-        avatar_url: parsed.avatar_url || undefined,
-        storage_used_bytes: 0,
-      });
+      const clerkUser = await currentUser();
+      if (clerkUser) {
+        email =
+          clerkUser.emailAddresses?.[0]?.emailAddress ||
+          clerkUser.primaryEmailAddressId ||
+          email;
+        name =
+          [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(' ') ||
+          clerkUser.username ||
+          email.split('@')[0];
+        avatar_url = clerkUser.imageUrl || undefined;
+      }
     } catch (e) {
-      console.error('Failed to parse session cookie:', e);
+      console.warn('Could not fetch Clerk user details in getSessionUser:', e);
     }
+
+    user = await db.createUser({
+      id: userId,
+      email,
+      name,
+      avatar_url,
+      storage_used_bytes: 0,
+    });
   }
 
-  // Handle raw user ID
-  const user = await db.getUser(sessionData);
-  if (user) {
-    return user;
-  }
-
-  // If demo user ID
-  if (sessionData === SEED_USER.id) {
-    return SEED_USER;
-  }
-
-  return null;
+  return user;
 }

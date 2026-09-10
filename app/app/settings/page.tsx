@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { useClerk } from '@clerk/nextjs';
 import { AppShell } from '@/components/layout/AppShell';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { useToast } from '@/components/ui/Toast';
@@ -66,10 +67,11 @@ export default function SettingsPage() {
     reader.readAsDataURL(file);
   };
 
+  const { signOut } = useClerk();
+
   const handleSignOut = async () => {
-    await fetch('/api/auth/session', { method: 'DELETE' });
+    await signOut({ redirectUrl: '/login' });
     toast({ title: 'Signed out', type: 'info' });
-    router.push('/login');
   };
 
   const handleResetData = () => {

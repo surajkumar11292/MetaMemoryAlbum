@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { UploadModal } from '@/components/upload/UploadModal';
+import { UserButton } from '@clerk/nextjs';
 
 export function AppHeader() {
   const pathname = usePathname();
@@ -64,7 +65,7 @@ export function AppHeader() {
 
           {/* Right Action Toolbar */}
           <div className="flex items-center space-x-3">
-            {/* Quick Ingestion Button (Sharp 0px, no drop shadow per design system) */}
+            {/* Quick Ingestion Button */}
             <button
               onClick={() => setIsUploadOpen(true)}
               className="inline-flex items-center space-x-1.5 bg-amber-accent text-deep-charcoal font-mono text-xs uppercase tracking-widest px-3.5 py-2 hover:bg-accent-hover font-semibold transition-colors"
@@ -89,6 +90,11 @@ export function AppHeader() {
             >
               <Sliders className="w-4 h-4" />
             </Link>
+
+            {/* Clerk User Button */}
+            <div className="flex items-center pl-1">
+              <UserButton afterSignOutUrl="/login" />
+            </div>
           </div>
         </div>
       </header>
