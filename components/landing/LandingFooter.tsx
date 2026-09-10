@@ -1,5 +1,8 @@
+'use client';
+
 import React from 'react';
 import Link from 'next/link';
+import { SignInButton, SignedIn, SignedOut } from '@clerk/nextjs';
 
 export function LandingFooter() {
   return (
@@ -21,9 +24,18 @@ export function LandingFooter() {
           <Link href="/app/flashback" className="hover:text-amber-accent transition-colors">
             Flashback
           </Link>
-          <Link href="/login" className="hover:text-amber-accent transition-colors">
-            Sign In
-          </Link>
+          <SignedOut>
+            <SignInButton mode="modal" fallbackRedirectUrl="/app">
+              <button className="hover:text-amber-accent transition-colors uppercase font-mono text-xs cursor-pointer">
+                Sign In
+              </button>
+            </SignInButton>
+          </SignedOut>
+          <SignedIn>
+            <Link href="/app" className="hover:text-amber-accent transition-colors">
+              My Archive
+            </Link>
+          </SignedIn>
         </div>
 
         <div className="font-mono text-xs text-muted-foreground">

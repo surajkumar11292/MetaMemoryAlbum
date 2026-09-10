@@ -2,7 +2,8 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { ArrowRight, Calendar, Sparkles, Layers, ShieldCheck } from 'lucide-react';
+import { ArrowRight, Layers, ShieldCheck } from 'lucide-react';
+import { SignUpButton, SignedIn, SignedOut } from '@clerk/nextjs';
 
 export function LandingHero() {
   return (
@@ -29,13 +30,24 @@ export function LandingHero() {
             </p>
 
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-3 sm:space-y-0 sm:space-x-4 pt-2">
-              <Link
-                href="/login"
-                className="inline-flex items-center justify-center space-x-2 bg-amber-accent text-deep-charcoal font-mono text-xs uppercase tracking-widest px-8 py-4 hover:bg-accent-hover font-semibold transition-all shadow-sm group"
-              >
-                <span>Start your memory album</span>
-                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-              </Link>
+              <SignedOut>
+                <SignUpButton mode="modal" fallbackRedirectUrl="/app">
+                  <button className="inline-flex items-center justify-center space-x-2 bg-amber-accent text-deep-charcoal font-mono text-xs uppercase tracking-widest px-8 py-4 hover:bg-accent-hover font-semibold transition-all shadow-sm group cursor-pointer">
+                    <span>Start your memory album</span>
+                    <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                  </button>
+                </SignUpButton>
+              </SignedOut>
+
+              <SignedIn>
+                <Link
+                  href="/app"
+                  className="inline-flex items-center justify-center space-x-2 bg-amber-accent text-deep-charcoal font-mono text-xs uppercase tracking-widest px-8 py-4 hover:bg-accent-hover font-semibold transition-all shadow-sm group"
+                >
+                  <span>Open your archive</span>
+                  <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                </Link>
+              </SignedIn>
 
               <Link
                 href="/app"

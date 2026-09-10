@@ -70,7 +70,7 @@ export default function SettingsPage() {
   const { signOut } = useClerk();
 
   const handleSignOut = async () => {
-    await signOut({ redirectUrl: '/login' });
+    await signOut({ redirectUrl: '/' });
     toast({ title: 'Signed out', type: 'info' });
   };
 

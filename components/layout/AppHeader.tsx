@@ -93,7 +93,7 @@ export function AppHeader() {
 
             {/* Clerk User Button */}
             <div className="flex items-center pl-1">
-              <UserButton afterSignOutUrl="/login" />
+              <UserButton afterSignOutUrl="/" />
             </div>
           </div>
         </div>

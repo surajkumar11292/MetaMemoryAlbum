@@ -1,3 +1,5 @@
+'use client';
+
 import React from 'react';
 import Link from 'next/link';
 import { LandingHero } from '@/components/landing/LandingHero';
@@ -6,7 +8,8 @@ import { FlashbackTeaser } from '@/components/landing/FlashbackTeaser';
 import { SharingTeaser } from '@/components/landing/SharingTeaser';
 import { LandingFooter } from '@/components/landing/LandingFooter';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
-import { ArrowRight, Lock } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
+import { SignInButton, SignUpButton, SignedIn, SignedOut } from '@clerk/nextjs';
 
 export default function LandingPage() {
   return (
@@ -23,21 +26,33 @@ export default function LandingPage() {
             </span>
           </Link>
 
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-3">
             <ThemeToggle />
-            <Link
-              href="/login"
-              className="font-mono text-xs uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors px-3 py-2"
-            >
-              Sign In
-            </Link>
-            <Link
-              href="/login"
-              className="inline-flex items-center space-x-1.5 bg-amber-accent text-deep-charcoal font-mono text-xs uppercase tracking-widest px-4 py-2 hover:bg-accent-hover font-semibold transition-colors"
-            >
-              <span>Launch App</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
+
+            <SignedOut>
+              <SignInButton mode="modal" fallbackRedirectUrl="/app">
+                <button className="font-mono text-xs uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors px-3 py-2 cursor-pointer">
+                  Sign In
+                </button>
+              </SignInButton>
+
+              <SignUpButton mode="modal" fallbackRedirectUrl="/app">
+                <button className="inline-flex items-center space-x-1.5 bg-amber-accent text-deep-charcoal font-mono text-xs uppercase tracking-widest px-4 py-2 hover:bg-accent-hover font-semibold transition-colors cursor-pointer">
+                  <span>Get Started</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </SignUpButton>
+            </SignedOut>
+
+            <SignedIn>
+              <Link
+                href="/app"
+                className="inline-flex items-center space-x-1.5 bg-amber-accent text-deep-charcoal font-mono text-xs uppercase tracking-widest px-4 py-2 hover:bg-accent-hover font-semibold transition-colors"
+              >
+                <span>Enter Archive</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </SignedIn>
           </div>
         </div>
       </header>
@@ -67,13 +82,24 @@ export default function LandingPage() {
             Begin with a single month or your entire life&apos;s photo collection. Your memories belong to you.
           </p>
           <div className="flex justify-center items-center space-x-4">
-            <Link
-              href="/login"
-              className="inline-flex items-center space-x-2 bg-amber-accent text-deep-charcoal font-mono text-xs uppercase tracking-widest px-8 py-4 hover:bg-accent-hover font-semibold transition-all shadow-md group"
-            >
-              <span>Create your memory album</span>
-              <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-            </Link>
+            <SignedOut>
+              <SignUpButton mode="modal" fallbackRedirectUrl="/app">
+                <button className="inline-flex items-center space-x-2 bg-amber-accent text-deep-charcoal font-mono text-xs uppercase tracking-widest px-8 py-4 hover:bg-accent-hover font-semibold transition-all shadow-md group cursor-pointer">
+                  <span>Create your memory album</span>
+                  <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                </button>
+              </SignUpButton>
+            </SignedOut>
+
+            <SignedIn>
+              <Link
+                href="/app"
+                className="inline-flex items-center space-x-2 bg-amber-accent text-deep-charcoal font-mono text-xs uppercase tracking-widest px-8 py-4 hover:bg-accent-hover font-semibold transition-all shadow-md group"
+              >
+                <span>Go to your timeline</span>
+                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+              </Link>
+            </SignedIn>
           </div>
         </div>
       </section>
